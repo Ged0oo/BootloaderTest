@@ -2,7 +2,7 @@
 
 static uint8_t BL_Host_Buffer[BL_HOST_BUFFER_RX_LENGTH];
 
-
+/* Last Change */
 
 void BL_Print_Message(char *format, ...)
 {
