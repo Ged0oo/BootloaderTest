@@ -21,18 +21,18 @@
 #define CBL_GET_HELP_CMD             1
 #define CBL_GET_CID_CMD              2
 /* Get Read Protection Status */
-#define CBL_GET_RDP_STATUS_CMD       0x13
-#define CBL_GO_TO_ADDR_CMD           0x14
-#define CBL_FLASH_ERASE_CMD          0x15
-#define CBL_MEM_WRITE_CMD            0x16
+#define CBL_GET_RDP_STATUS_CMD       3
+#define CBL_GO_TO_ADDR_CMD           4
+#define CBL_FLASH_ERASE_CMD          5
+#define CBL_MEM_WRITE_CMD            6
 /* Enable/Disable Write Protection */
-#define CBL_ED_W_PROTECT_CMD         0x17
-#define CBL_MEM_READ_CMD             0x18
+#define CBL_ED_W_PROTECT_CMD         7
+#define CBL_MEM_READ_CMD             8
 /* Get Sector Read/Write Protection Status */
-#define CBL_READ_SECTOR_STATUS_CMD   0x19
-#define CBL_OTP_READ_CMD             0x20
+#define CBL_READ_SECTOR_STATUS_CMD   9
+#define CBL_OTP_READ_CMD             10
 /* Change Read Out Protection Level */
-#define CBL_CHANGE_ROP_Level_CMD     0x21
+#define CBL_CHANGE_ROP_Level_CMD     11
 
 typedef enum
 {

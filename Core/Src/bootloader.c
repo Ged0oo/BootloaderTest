@@ -13,7 +13,7 @@ void BL_Print_Message(char *format, ...)
 	vsprintf(message , format , args);
 
 #if (BL_DEBUG_METHOD==BL_ENABLE_UART_DEBUG_MESSAGE)
-	HAL_UART_Transmit(BL_DEBUG_UART , (uint8_t *)message , sizeof(message) , HAL_MAX_DELAY);
+	HAL_UART_Transmit(BL_DEBUG_UART , (uint8_t *)message , sizeof(message), HAL_MAX_DELAY);
 #elif (BL_DEBUG_METHOD==BL_ENABLE_SPI_DEBUG_MESSAGE)
 			/*SEND DATA THROUGH SPI*/
 #elif (BL_DEBUG_METHOD==BL_ENABLE_I2C_DEBUG_MESSAGE)
@@ -45,7 +45,7 @@ BL_Status BL_UART_Fetch_Host_Command(void)
 	else
 	{
 		dataLength = BL_Host_Buffer[0]-'0';
-		BL_Print_Message("Command Length : %d", dataLength);
+		BL_Print_Message("Command Length : %d \r\n", dataLength);
 		/* Get Command packet from the HOST */
 		HAL_Status = HAL_UART_Receive(BL_HOST_COMMUNICATION_UART, &(BL_Host_Buffer[1]), dataLength, HAL_MAX_DELAY);
 		if(HAL_Status != HAL_OK)
@@ -55,19 +55,19 @@ BL_Status BL_UART_Fetch_Host_Command(void)
 		else
 		{
 			_command = BL_Host_Buffer[1] - '0';
-			BL_Print_Message("Command ID : %d", _command);
+			BL_Print_Message("Command ID : %d \r\n", _command);
 			switch(_command)
 			{
 				case CBL_GET_VER_CMD :
-				BL_Print_Message("CBL_GET_VER_CMD Recieved\r\n");
+				BL_Print_Message("CBL_GET_VER_CMD Recieved \r\n");
 				break;
 
 				case CBL_GET_HELP_CMD :
-				BL_Print_Message("CBL_GET_HELP_CMD Recieved\r\n");
+				BL_Print_Message("CBL_GET_HELP_CMD Recieved \r\n");
 				break;
 
 				case CBL_GET_CID_CMD :
-				BL_Print_Message("CBL_GET_CID_CMD Recieved\r\n");
+				BL_Print_Message("CBL_GET_CID_CMD Recieved \r\n");
 				break;
 
 				default :
