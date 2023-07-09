@@ -5,9 +5,11 @@
 #include "string.h"
 #include "stdarg.h"
 #include "usart.h"
+#include "crc.h"
 
 #define BL_DEBUG_UART							&huart1
 #define BL_HOST_COMMUNICATION_UART				&huart2
+#define CRC_ENGINE             					&hcrc
 
 #define BL_ENABLE_UART_DEBUG_MESSAGE			0x00
 #define BL_ENABLE_SPI_DEBUG_MESSAGE				0x01
@@ -34,6 +36,15 @@
 /* Change Read Out Protection Level */
 #define CBL_CHANGE_ROP_Level_CMD     			11
 
+#define CBL_VENDOR_ID                			100
+#define CBL_SW_MAJOR_VERSION         			1
+#define CBL_SW_MINOR_VERSION         			1
+#define CBL_SW_PATCH_VERSION         			0
+
+#define CRC_TYPE_SIZE_BYTE           			4
+
+#define CBL_SEND_NACK                			0xAB
+#define CBL_SEND_ACK                 			0xCD
 
 
 typedef enum
@@ -41,6 +52,14 @@ typedef enum
 	BL_NACK = 0,
 	BL_ACK
 }BL_Status;
+
+
+
+typedef enum
+{
+	CRC_FAIL = 0,
+	CRC_PASS
+}tCRC_VERIFY;
 
 
 
