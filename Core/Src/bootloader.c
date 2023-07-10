@@ -21,6 +21,24 @@ static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t *pData, uint32_t Data_Len, uint
 static void Bootloader_Send_ACK(uint8_t Replay_Len);
 static void Bootloader_Send_NACK(void);
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
+static void bootloader_jump_to_user_app(void);
+static uint8_t Host_Address_Verification(uint32_t Jump_Address);
+
+static uint8_t Bootloader_Supported_CMDs[12] =
+{
+    CBL_GET_VER_CMD,
+    CBL_GET_HELP_CMD,
+    CBL_GET_CID_CMD,
+    CBL_GET_RDP_STATUS_CMD,
+    CBL_GO_TO_ADDR_CMD,
+    CBL_FLASH_ERASE_CMD,
+    CBL_MEM_WRITE_CMD,
+    CBL_ED_W_PROTECT_CMD,
+    CBL_MEM_READ_CMD,
+    CBL_READ_SECTOR_STATUS_CMD,
+    CBL_OTP_READ_CMD,
+    CBL_CHANGE_ROP_Level_CMD
+};
 
 
 void BL_Print_Message(char *format, ...)
@@ -55,7 +73,6 @@ BL_Status BL_UART_Fetch_Host_Command(void)
 	BL_Print_Message("\rBootloader Fetch\r");
 #endif
 
-	BL_Print_Message("\rBootloader Fetch\r");
 	BL_Status Status = BL_NACK;
 	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
 	uint8_t dataLength = 0;
@@ -204,13 +221,58 @@ static void Bootloader_Get_Version(uint8_t *Host_Buffer)
 
 static void Bootloader_Get_Help(uint8_t *Host_Buffer)
 {
+	/* Extract Packet length Sent by the HOST */
+	uint16_t Host_CMD_Packet_Length = Host_Buffer[0]+1-'0';
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Packet Length : %d\r", Host_CMD_Packet_Length);
+#endif
+
+	/* Extract CRC32 Sent by the HOST */
+	uint32_t Host_CRC32 = (uint32_t *)(Host_Buffer + Host_CMD_Packet_Length - CRC_TYPE_SIZE_BYTE);
+
+	/* CRC32 Verification */
+	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
+	{
+		/* send ack */
+		Bootloader_Send_ACK(12);
+		Bootloader_Send_Data_To_Host((uint8_t *)Bootloader_Supported_CMDs, 12);
+	}
+	else
+	{
+		/* send not ack */
+		Bootloader_Send_NACK();
+	}
 }
 
 
 static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer)
 {
+	/* Extract Packet length Sent by the HOST */
+	uint16_t Host_CMD_Packet_Length = Host_Buffer[0]+1-'0';
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Packet Length : %d\r", Host_CMD_Packet_Length);
+#endif
+
+	/* Extract CRC32 Sent by the HOST */
+	uint32_t Host_CRC32 = (uint32_t *)(Host_Buffer + Host_CMD_Packet_Length - CRC_TYPE_SIZE_BYTE);
+
+	/* CRC32 Verification */
+	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
+	{
+		/* Get the MCU Chip Identification Number */
+		uint16_t Chip_Identification_Number= (uint16_t)((DBGMCU->IDCODE) & 0x00000FFF);
+
+		/* Report the Chip Identification Number to Host */
+		Bootloader_Send_ACK(2);
+		Bootloader_Send_Data_To_Host((uint8_t *)Chip_Identification_Number, 2);
+	}
+	else
+	{
+		/* send not ack */
+		Bootloader_Send_NACK();
+	}
 }
 
 
@@ -222,7 +284,34 @@ static void Bootloader_Read_Protection_Level(uint8_t *Host_Buffer)
 
 static void Bootloader_Jump_To_Address(uint8_t *Host_Buffer)
 {
+	/* Extract Packet length Sent by the HOST */
+	uint16_t Host_CMD_Packet_Length = Host_Buffer[0]+1-'0';
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Packet Length : %d\r", Host_CMD_Packet_Length);
+#endif
+
+	/* Extract CRC32 Sent by the HOST */
+	uint32_t Host_CRC32 = (uint32_t *)(Host_Buffer + Host_CMD_Packet_Length - CRC_TYPE_SIZE_BYTE);
+
+	/* CRC32 Verification */
+	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
+	{
+		uint32_t HOST_Jump_Address = 0;
+		uint8_t Address_Verification = ADDRESS_IS_INVALID;
+
+		/* Extract Address form HOST Packet */
+		HOST_Jump_Address = *((uint32_t *)&Host_Buffer[2]);
+
+		/* send ack */
+		Bootloader_Send_ACK(1);
+		Bootloader_Send_Data_To_Host((uint8_t *)Bootloader_Supported_CMDs, 1);
+	}
+	else
+	{
+		/* send not ack */
+		Bootloader_Send_NACK();
+	}
 }
 
 
@@ -313,4 +402,40 @@ static void Bootloader_Send_NACK(void)
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len)
 {
 	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, Host_Buffer, Data_Len, HAL_MAX_DELAY);
+}
+
+
+static void bootloader_jump_to_user_app(void)
+{
+	/* Value of the main stack pointer of our main application */
+	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS);
+
+	/* Reset Handler definition function of our main application */
+	uint32_t MainAppAddr = *((volatile uint32_t *)(FLASH_SECTOR2_BASE_ADDRESS + 4));
+
+	/* Fetch the reset handler address of the user application */
+	pMainApp ResetHandler_Address = (pMainApp)MainAppAddr;
+
+	/* Set Main Stack Pointer */
+	__set_MSP(MSP_Value);
+
+	/* DeInitialize / Disable of modules */
+	/* DeInitialize the RCC clock configuration to the default reset state. */
+	/* Disable Maskable Interrupt */
+	HAL_RCC_DeInit();
+
+	/* Jump to Application Reset Handler */
+	ResetHandler_Address();
+}
+
+
+static uint8_t Host_Address_Verification(uint32_t Jump_Address)
+{
+	uint8_t Address_Verification = ADDRESS_IS_INVALID;
+
+	if((Jump_Address >= SRAM_BASE) && (Jump_Address <= STM32F103_SRAM_END))				Address_Verification = ADDRESS_IS_VALID;
+	else if((Jump_Address >= FLASH_BASE) && (Jump_Address <= STM32F103_FLASH_END))		Address_Verification = ADDRESS_IS_VALID;
+	else		Address_Verification = ADDRESS_IS_INVALID;
+
+	return Address_Verification;
 }
