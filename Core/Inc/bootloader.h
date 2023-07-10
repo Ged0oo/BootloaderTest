@@ -76,8 +76,10 @@ typedef enum
 	CRC_PASS
 }tCRC_VERIFY;
 
+
 typedef void (*pMainApp)(void);
 typedef void (*Jump_Ptr)(void);
+
 
 void BL_Print_Message(char *format, ...);
 BL_Status BL_UART_Fetch_Host_Command(void);
