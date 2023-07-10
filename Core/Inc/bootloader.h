@@ -51,6 +51,17 @@
 #define 	CBL_SEND_NACK                			0xAB
 #define 	CBL_SEND_ACK                 			0xCD
 
+/* Sector 2 Start Address */
+#define 	FLASH_SECTOR2_BASE_ADDRESS   			0x08008000U
+
+#define 	ADDRESS_IS_INVALID           			0x00
+#define 	ADDRESS_IS_VALID             			0x01
+
+#define 	STM32F103_SRAM_SIZE         			(20 * 1024)
+#define 	STM32F103_FLASH_SIZE         			(128 * 1024)
+#define 	STM32F103_SRAM_END          			(SRAM_BASE + STM32F103_SRAM_SIZE)
+#define 	STM32F103_FLASH_END          			(FLASH_BASE + STM32F103_FLASH_SIZE)
+
 
 typedef enum
 {
@@ -65,6 +76,8 @@ typedef enum
 	CRC_PASS
 }tCRC_VERIFY;
 
+typedef void (*pMainApp)(void);
+typedef void (*Jump_Ptr)(void);
 
 void BL_Print_Message(char *format, ...);
 BL_Status BL_UART_Fetch_Host_Command(void);
