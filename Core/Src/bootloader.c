@@ -297,15 +297,35 @@ static void Bootloader_Jump_To_Address(uint8_t *Host_Buffer)
 	/* CRC32 Verification */
 	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
 	{
+		/* send ack */
+		Bootloader_Send_ACK(1);
+
 		uint32_t HOST_Jump_Address = 0;
 		uint8_t Address_Verification = ADDRESS_IS_INVALID;
 
 		/* Extract Address form HOST Packet */
 		HOST_Jump_Address = *((uint32_t *)&Host_Buffer[2]);
 
-		/* send ack */
-		Bootloader_Send_ACK(1);
-		Bootloader_Send_Data_To_Host((uint8_t *)Bootloader_Supported_CMDs, 1);
+		/* Verify the Extracted address to be valid address */
+		Address_Verification = Host_Address_Verification(HOST_Jump_Address);
+		if(ADDRESS_IS_VALID == Address_Verification)
+		{
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("Address verification succeeded \r\n");
+#endif
+
+		/* Report address verification succeeded */
+		Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification, 1);
+
+		/* Prepare the address to jump */
+		Jump_Ptr Jump_Address = (Jump_Ptr)(HOST_Jump_Address + 1);
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("Jump to : 0x%X \r\n", Jump_Address);
+#endif
+
+		Jump_Address();
+		}
 	}
 	else
 	{
