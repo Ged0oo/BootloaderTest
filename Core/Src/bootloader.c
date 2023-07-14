@@ -22,6 +22,8 @@ static void Bootloader_Send_NACK(void);
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
 static void bootloader_jump_to_user_app(void);
 static uint8_t Host_Address_Verification(uint32_t Jump_Address);
+static uint8_t Perform_Flash_Erase(uint8_t Sector_Numebr, uint8_t Number_Of_Sectors);
+
 
 static uint8_t Bootloader_Supported_CMDs[12] =
 {
@@ -336,6 +338,7 @@ static void Bootloader_Jump_To_Address(uint8_t *Host_Buffer)
 
 static void Bootloader_Erase_Flash(uint8_t *Host_Buffer)
 {
+	uint8_t lEraseStatus = 0;
 	/* Extract Packet length Sent by the HOST */
 	uint16_t Host_CMD_Packet_Length = Host_Buffer[0]+1-'0';
 
@@ -349,12 +352,18 @@ static void Bootloader_Erase_Flash(uint8_t *Host_Buffer)
 	/* CRC32 Verification */
 	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
 	{
-		/* Get the MCU Chip Identification Number */
-		uint16_t Chip_Identification_Number= (uint16_t)((DBGMCU->IDCODE) & 0x00000FFF);
-
-		/* Report the Chip Identification Number to Host */
-		Bootloader_Send_ACK(2);
-		Bootloader_Send_Data_To_Host((uint8_t *)Chip_Identification_Number, 2);
+		Bootloader_Send_ACK(1);
+		lEraseStatus = Perform_Flash_Erase(Host_Buffer[2] , Host_Buffer[3]);
+		if(lEraseStatus == SUCCESSFUL_ERASE)
+		{
+			/* Report the erase status */
+			Bootloader_Send_Data_To_Host((uint8_t *)&lEraseStatus, 1);
+		}
+		else
+		{
+			/* Report the erase status */
+			Bootloader_Send_Data_To_Host((uint8_t *)&lEraseStatus, 1);
+		}
 	}
 	else
 	{
@@ -481,4 +490,11 @@ static uint8_t Host_Address_Verification(uint32_t Jump_Address)
 	else		Address_Verification = ADDRESS_IS_INVALID;
 
 	return Address_Verification;
+}
+
+
+
+static uint8_t Perform_Flash_Erase(uint8_t Sector_Numebr, uint8_t Number_Of_Sectors)
+{
+
 }
