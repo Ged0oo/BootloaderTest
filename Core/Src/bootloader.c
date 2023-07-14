@@ -16,7 +16,6 @@ static void Bootloader_Get_Sector_Protection_Status(uint8_t *Host_Buffer);
 static void Bootloader_Read_OTP(uint8_t *Host_Buffer);
 static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer);
 
-
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t *pData, uint32_t Data_Len, uint32_t Host_CRC);
 static void Bootloader_Send_ACK(uint8_t Replay_Len);
 static void Bootloader_Send_NACK(void);
@@ -337,7 +336,31 @@ static void Bootloader_Jump_To_Address(uint8_t *Host_Buffer)
 
 static void Bootloader_Erase_Flash(uint8_t *Host_Buffer)
 {
+	/* Extract Packet length Sent by the HOST */
+	uint16_t Host_CMD_Packet_Length = Host_Buffer[0]+1-'0';
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Packet Length : %d\r", Host_CMD_Packet_Length);
+#endif
+
+	/* Extract CRC32 Sent by the HOST */
+	uint32_t Host_CRC32 = (uint32_t *)(Host_Buffer + Host_CMD_Packet_Length - CRC_TYPE_SIZE_BYTE);
+
+	/* CRC32 Verification */
+	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
+	{
+		/* Get the MCU Chip Identification Number */
+		uint16_t Chip_Identification_Number= (uint16_t)((DBGMCU->IDCODE) & 0x00000FFF);
+
+		/* Report the Chip Identification Number to Host */
+		Bootloader_Send_ACK(2);
+		Bootloader_Send_Data_To_Host((uint8_t *)Chip_Identification_Number, 2);
+	}
+	else
+	{
+		/* send not ack */
+		Bootloader_Send_NACK();
+	}
 }
 
 
