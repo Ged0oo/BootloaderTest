@@ -6,6 +6,9 @@
 #include "stdarg.h"
 #include "usart.h"
 #include "crc.h"
+#include "../stm32f1xx_hal_flash_ex.h"
+#include "../stm32f1xx_hal_def.h"
+
 
 #define 	BL_DEBUG_UART							&huart1
 #define 	BL_HOST_COMMUNICATION_UART				&huart2
@@ -62,6 +65,14 @@
 #define 	STM32F103_SRAM_END          			(SRAM_BASE + STM32F103_SRAM_SIZE)
 #define 	STM32F103_FLASH_END          			(FLASH_BASE + STM32F103_FLASH_SIZE)
 
+/* CBL_FLASH_ERASE_CMD */
+#define 	CBL_FLASH_MAX_SECTOR_NUMBER  			12
+#define 	CBL_FLASH_MASS_ERASE         			0xFF
+#define 	HAL_SUCCESSFUL_ERASE         			0xFFFFFFFFU
+#define 	INVALID_SECTOR_NUMBER        			0x00
+#define 	VALID_SECTOR_NUMBER          			0x01
+#define 	UNSUCCESSFUL_ERASE           			0x02
+#define 	SUCCESSFUL_ERASE             			0x03
 
 typedef enum
 {
