@@ -22,6 +22,9 @@ static void bootloader_jump_to_user_app(void);
 static uint8_t Host_Address_Verification(uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase(uint8_t Sector_Numebr, uint8_t Number_Of_Sectors);
 static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payload_Start_Address, uint16_t Payload_Len);
+static uint8_t CBL_STM32F407_Get_RDP_Level();
+
+
 
 static uint8_t Bootloader_Supported_CMDs[12] =
 {
@@ -277,7 +280,42 @@ static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer)
 
 static void Bootloader_Read_Protection_Level(uint8_t *Host_Buffer)
 {
+	uint16_t Host_CMD_Packet_Len = 0;
+    uint32_t Host_CRC32 = 0;
+	uint8_t RDP_Level = 0;
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Read the FLASH Read Protection Out level \r\n");
+#endif
+
+	/* Extract the CRC32 and packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0] + 1 - '0';
+	Host_CRC32 = *((uint32_t *)((Host_Buffer + Host_CMD_Packet_Len) - CRC_TYPE_SIZE_BYTE));
+
+	/* CRC Verification */
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t *)&Host_Buffer[0] , Host_CMD_Packet_Len - 4, Host_CRC32))
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Passed \r\n");
+#endif
+
+		Bootloader_Send_ACK(1);
+
+		/* Read Protection Level */
+		RDP_Level = CBL_STM32F407_Get_RDP_Level();
+
+		/* Report Valid Protection Level */
+		Bootloader_Send_Data_To_Host((uint8_t *)&RDP_Level, 1);
+	}
+	else
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Failed \r\n");
+#endif
+		Bootloader_Send_NACK();
+	}
 }
 
 
@@ -625,4 +663,15 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payloa
 	}
 
 	return Flash_Payload_Write_Status;
+}
+
+
+static uint8_t CBL_STM32F407_Get_RDP_Level()
+{
+	FLASH_OBProgramInitTypeDef FLASH_OBProgram;
+
+	/* Get the Option byte configuration */
+	HAL_FLASHEx_OBGetConfig(&FLASH_OBProgram);
+
+	return (uint8_t)(FLASH_OBProgram.RDPLevel);
 }
