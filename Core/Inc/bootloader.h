@@ -80,6 +80,7 @@
 #define 	FLASH_LOCK_WRITE_FAILED      			0x00
 #define 	FLASH_LOCK_WRITE_PASSED      			0x01
 
+
 typedef enum
 {
 	BL_NACK = 0,
