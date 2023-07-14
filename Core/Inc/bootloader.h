@@ -74,6 +74,12 @@
 #define 	UNSUCCESSFUL_ERASE           			0x02
 #define 	SUCCESSFUL_ERASE             			0x03
 
+/* CBL_MEM_WRITE_CMD */
+#define 	FLASH_PAYLOAD_WRITE_FAILED   			0x00
+#define 	FLASH_PAYLOAD_WRITE_PASSED   			0x01
+#define 	FLASH_LOCK_WRITE_FAILED      			0x00
+#define 	FLASH_LOCK_WRITE_PASSED      			0x01
+
 typedef enum
 {
 	BL_NACK = 0,
