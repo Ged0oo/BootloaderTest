@@ -80,6 +80,19 @@
 #define 	FLASH_LOCK_WRITE_FAILED      			0x00
 #define 	FLASH_LOCK_WRITE_PASSED      			0x01
 
+/* CBL_GET_RDP_STATUS_CMD */
+#define 	ROP_LEVEL_READ_INVALID       			0x00
+#define 	ROP_LEVE_READL_VALID         			0X01
+
+/* CBL_CHANGE_ROP_Level_CMD */
+#define 	ROP_LEVEL_CHANGE_INVALID     			0x00
+#define 	ROP_LEVEL_CHANGE_VALID       			0X01
+
+#define 	CBL_ROP_LEVEL_1              			0x01
+#define 	CBL_ROP_LEVEL_0              			0x00
+#define 	CBL_ROP_LEVEL_2              			0x02
+
+
 typedef enum
 {
 	BL_NACK = 0,
