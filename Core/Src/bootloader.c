@@ -22,7 +22,7 @@ static void bootloader_jump_to_user_app(void);
 static uint8_t Host_Address_Verification(uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase(uint8_t Sector_Numebr, uint8_t Number_Of_Sectors);
 static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payload_Start_Address, uint16_t Payload_Len);
-static uint8_t CBL_STM32F407_Get_RDP_Level();
+static uint8_t CBL_STM32F103_Get_RDP_Level();
 
 
 
@@ -191,7 +191,6 @@ BL_Status BL_UART_Fetch_Host_Command(void)
 }
 
 
-
 static void Bootloader_Get_Version(uint8_t *Host_Buffer)
 {
 	uint8_t BL_Version[4] = {CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION, CBL_SW_MINOR_VERSION, CBL_SW_PATCH_VERSION};
@@ -303,7 +302,7 @@ static void Bootloader_Read_Protection_Level(uint8_t *Host_Buffer)
 		Bootloader_Send_ACK(1);
 
 		/* Read Protection Level */
-		RDP_Level = CBL_STM32F407_Get_RDP_Level();
+		RDP_Level = CBL_STM32F103_Get_RDP_Level();
 
 		/* Report Valid Protection Level */
 		Bootloader_Send_Data_To_Host((uint8_t *)&RDP_Level, 1);
@@ -666,7 +665,7 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payloa
 }
 
 
-static uint8_t CBL_STM32F407_Get_RDP_Level()
+static uint8_t CBL_STM32F103_Get_RDP_Level()
 {
 	FLASH_OBProgramInitTypeDef FLASH_OBProgram;
 
