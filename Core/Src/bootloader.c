@@ -23,7 +23,7 @@ static uint8_t Host_Address_Verification(uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase(uint8_t Sector_Numebr, uint8_t Number_Of_Sectors);
 static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payload_Start_Address, uint16_t Payload_Len);
 static uint8_t CBL_STM32F103_Get_RDP_Level();
-
+static uint8_t Change_ROP_Level(uint32_t ROP_Level);
 
 
 static uint8_t Bootloader_Supported_CMDs[12] =
@@ -515,8 +515,62 @@ static void Bootloader_Read_OTP(uint8_t *Host_Buffer)
 
 static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer)
 {
+	uint16_t Host_CMD_Packet_Len = 0;
+	uint32_t Host_CRC32 = 0;
+	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+	uint8_t Host_ROP_Level = 0;
 
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Change read protection level of the user flash \r\n");
+#endif
+
+	/* Extract the CRC32 and packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0] + 1 - '0';
+	Host_CRC32 = *((uint32_t *)((Host_Buffer + Host_CMD_Packet_Len) - CRC_TYPE_SIZE_BYTE));
+
+	/* CRC Verification */
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t *)&Host_Buffer[0] , Host_CMD_Packet_Len - 4, Host_CRC32))
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Passed \r\n");
+#endif
+
+		Bootloader_Send_ACK(1);
+
+		/* Request change the Read Out Protection Level */
+		Host_ROP_Level = Host_Buffer[2];
+
+		/* Warning: When enabling read protection level 2, it s no more possible to go back to level 1 or 0 */
+		if(CBL_ROP_LEVEL_2 == Host_ROP_Level)
+		{
+			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+		}
+		else
+		{
+			if(CBL_ROP_LEVEL_0 == Host_ROP_Level)
+			{
+				Host_ROP_Level = 0xAA;
+			}
+			else if(CBL_ROP_LEVEL_1 == Host_ROP_Level)
+			{
+				Host_ROP_Level = 0x55;
+			}
+			ROP_Level_Status = Change_ROP_Level(Host_ROP_Level);
+		}
+		Bootloader_Send_Data_To_Host((uint8_t *)&ROP_Level_Status, 1);
+	}
+	else
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Failed \r\n");
+#endif
+
+		Bootloader_Send_NACK();
+	}
 }
+
 
 
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t *pData, uint32_t Data_Len, uint32_t Host_CRC)
@@ -673,4 +727,83 @@ static uint8_t CBL_STM32F103_Get_RDP_Level()
 	HAL_FLASHEx_OBGetConfig(&FLASH_OBProgram);
 
 	return (uint8_t)(FLASH_OBProgram.RDPLevel);
+}
+
+
+static uint8_t Change_ROP_Level(uint32_t ROP_Level)
+{
+	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
+	FLASH_OBProgramInitTypeDef FLASH_OBProgramInit;
+	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+
+	/* Unlock the FLASH Option Control Registers access */
+	HAL_Status = HAL_FLASH_OB_Unlock();
+	if(HAL_Status != HAL_OK)
+	{
+	ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Failed -> Unlock the FLASH Option Control Registers access \r\n");
+#endif
+
+	}
+	else
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("Passed -> Unlock the FLASH Option Control Registers access \r\n");
+#endif
+
+		FLASH_OBProgramInit.OptionType = OPTIONBYTE_RDP; /* RDP option byte configuration */
+		FLASH_OBProgramInit.Banks = FLASH_BANK_1;
+		FLASH_OBProgramInit.RDPLevel = ROP_Level;
+
+		/* Program option bytes */
+		HAL_Status = HAL_FLASHEx_OBProgram(&FLASH_OBProgramInit);
+
+		if(HAL_Status != HAL_OK)
+		{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+			BL_Print_Message("Failed -> Program option bytes \r\n");
+#endif
+
+			HAL_Status = HAL_FLASH_OB_Lock();
+			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+		}
+		else
+		{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+			BL_Print_Message("Passed -> Program option bytes \r\n");
+#endif
+
+			/* Launch the option byte loading */
+			HAL_FLASH_OB_Launch();
+
+			if(HAL_Status != HAL_OK)
+			{
+				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+			}
+			else
+			{
+				/* Lock the FLASH Option Control Registers access */
+				HAL_Status = HAL_FLASH_OB_Lock();
+				if(HAL_Status != HAL_OK)
+				{
+					ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+				}
+				else
+				{
+					ROP_Level_Status = ROP_LEVEL_CHANGE_VALID;
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+					BL_Print_Message("Passed -> Program ROP to Level : 0x%X \r\n", ROP_Level);
+#endif
+
+				}
+			}
+		}
+	}
+	return ROP_Level_Status;
 }
