@@ -37,6 +37,7 @@
 #define 	CBL_GO_TO_ADDR_CMD           			4
 #define 	CBL_FLASH_ERASE_CMD          			5
 #define 	CBL_MEM_WRITE_CMD            			6
+
 /* Enable/Disable Write Protection */
 #define 	CBL_ED_W_PROTECT_CMD         			7
 #define 	CBL_MEM_READ_CMD             			8
