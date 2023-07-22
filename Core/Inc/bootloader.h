@@ -45,6 +45,7 @@
 /* Get Sector Read/Write Protection Status */
 #define 	CBL_READ_SECTOR_STATUS_CMD   			9
 #define 	CBL_OTP_READ_CMD             			10
+
 /* Change Read Out Protection Level */
 #define 	CBL_CHANGE_ROP_Level_CMD     			11
 
