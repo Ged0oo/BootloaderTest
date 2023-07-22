@@ -31,6 +31,7 @@
 #define 	CBL_GET_VER_CMD              			0
 #define 	CBL_GET_HELP_CMD             			1
 #define 	CBL_GET_CID_CMD              			2
+
 /* Get Read Protection Status */
 #define 	CBL_GET_RDP_STATUS_CMD       			3
 #define 	CBL_GO_TO_ADDR_CMD           			4
