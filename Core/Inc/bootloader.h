@@ -41,6 +41,7 @@
 /* Enable/Disable Write Protection */
 #define 	CBL_ED_W_PROTECT_CMD         			7
 #define 	CBL_MEM_READ_CMD             			8
+
 /* Get Sector Read/Write Protection Status */
 #define 	CBL_READ_SECTOR_STATUS_CMD   			9
 #define 	CBL_OTP_READ_CMD             			10
