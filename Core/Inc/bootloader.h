@@ -107,7 +107,6 @@ typedef enum
 	CRC_PASS
 }tCRC_VERIFY;
 
-
 typedef void (*pMainApp)(void);
 typedef void (*Jump_Ptr)(void);
 
