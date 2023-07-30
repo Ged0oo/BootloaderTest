@@ -95,7 +95,6 @@
 #define 	CBL_ROP_LEVEL_0              			0x00
 #define 	CBL_ROP_LEVEL_2              			0x02
 
-
 typedef enum
 {
 	BL_NACK = 0,
