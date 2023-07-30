@@ -101,7 +101,6 @@ typedef enum
 	BL_ACK
 }BL_Status;
 
-
 typedef enum
 {
 	CRC_FAIL = 0,
