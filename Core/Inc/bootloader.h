@@ -9,7 +9,6 @@
 #include "../stm32f1xx_hal_flash_ex.h"
 #include "../stm32f1xx_hal_def.h"
 
-
 #define 	BL_DEBUG_UART							&huart1
 #define 	BL_HOST_COMMUNICATION_UART				&huart2
 #define 	CRC_ENGINE             					&hcrc
