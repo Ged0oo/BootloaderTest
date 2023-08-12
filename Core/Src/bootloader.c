@@ -69,7 +69,6 @@ void BL_Print_Message(char *format, ...)
 	va_end(args);
 }
 
-
 BL_Status BL_UART_Fetch_Host_Command(void)
 {
 #if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
