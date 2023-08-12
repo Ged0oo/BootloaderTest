@@ -276,7 +276,6 @@ static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer)
 	}
 }
 
-
 static void Bootloader_Read_Protection_Level(uint8_t *Host_Buffer)
 {
 	uint16_t Host_CMD_Packet_Len = 0;
