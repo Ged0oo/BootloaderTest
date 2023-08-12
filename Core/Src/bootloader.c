@@ -14,6 +14,7 @@ static void Bootloader_Get_Sector_Protection_Status(uint8_t *Host_Buffer);
 static void Bootloader_Read_OTP(uint8_t *Host_Buffer);
 static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer);
 
+
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t *pData, uint32_t Data_Len, uint32_t Host_CRC);
 static void Bootloader_Send_ACK(uint8_t Replay_Len);
 static void Bootloader_Send_NACK(void);
