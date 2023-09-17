@@ -18,12 +18,14 @@
   */
 /* USER CODE END Header */
 
+
 /* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
+
 
 /*----------------------------------------------------------------------------*/
 /* Configure GPIO                                                             */
@@ -39,6 +41,7 @@
         * EVENT_OUT
         * EXTI
 */
+
 void MX_GPIO_Init(void)
 {
 
@@ -47,6 +50,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
 }
+
 
 /* USER CODE BEGIN 2 */
 
