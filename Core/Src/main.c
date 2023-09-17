@@ -58,8 +58,6 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-char msg[] = "Mohamed Nagy\r\n";
-
 /* USER CODE END 0 */
 
 /**
@@ -70,9 +68,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	//BL_Status status = BL_NACK;
-	//char message_1[] = "Mohamed Nagy  =>  %d\r\n";
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -82,7 +77,7 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-  HAL_StatusTypeDef st = HAL_OK;
+  HAL_StatusTypeDef status = HAL_OK;
 
   /* USER CODE END Init */
 
@@ -102,7 +97,7 @@ int main(void)
 
 
   //uint32_t counter = 0;
-  //BL_Print_Message("Bootloader Started :\r\n");
+  BL_Print_Message("Bootloader Started :\r\n");
 
 
   /* USER CODE END 2 */
@@ -115,12 +110,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  //status = BL_UART_Fetch_Host_Command();
-
-	  st = HAL_UART_Transmit(&huart1 , (uint8_t *)msg , sizeof(msg), HAL_MAX_DELAY);
-	  HAL_Delay(500);
-	  st = HAL_UART_Transmit(&huart2 , (uint8_t *)msg , sizeof(msg), HAL_MAX_DELAY);
-	  HAL_Delay(500);
+	  status = BL_UART_Fetch_Host_Command();
   }
   /* USER CODE END 3 */
 }
