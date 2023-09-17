@@ -409,7 +409,7 @@ static void Bootloader_Erase_Flash(uint8_t *Host_Buffer)
 	if(Bootloader_CRC_Verify( (uint8_t *)&Host_Buffer[0], Host_CMD_Packet_Length-CRC_TYPE_SIZE_BYTE, Host_CRC32) == CRC_PASS)
 	{
 		Bootloader_Send_ACK(1);
-		lEraseStatus = Perform_Flash_Erase(Host_Buffer[2] , Host_Buffer[3]);
+		lEraseStatus = Perform_Flash_Erase(Host_Buffer[2] , Host_Buffer[6]);
 		if(lEraseStatus == SUCCESSFUL_ERASE)
 		{
 			/* Report the erase status */
@@ -765,7 +765,7 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payloa
 	}
 	else
 	{
-		for(Payload_Counter = 0; Payload_Counter < Payload_Len; Payload_Counter++)
+		for(Payload_Counter = 0 ; Payload_Counter < Payload_Len ; Payload_Counter++)
 		{
 			/* Program a byte at a specified address */
 			HAL_Status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, Payload_Start_Address + Payload_Counter, Host_Payload[Payload_Counter]);
