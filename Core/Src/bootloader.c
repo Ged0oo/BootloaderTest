@@ -7,15 +7,8 @@ static uint8_t Bootloader_Supported_CMDs[12] =
     CBL_GET_VER_CMD,
     CBL_GET_HELP_CMD,
     CBL_GET_CID_CMD,
-    CBL_GET_RDP_STATUS_CMD,
-    CBL_GO_TO_ADDR_CMD,
     CBL_FLASH_ERASE_CMD,
     CBL_MEM_WRITE_CMD,
-    CBL_ED_W_PROTECT_CMD,
-    CBL_MEM_READ_CMD,
-    CBL_READ_SECTOR_STATUS_CMD,
-    CBL_OTP_READ_CMD,
-    CBL_CHANGE_ROP_Level_CMD
 };
 
 static void Bootloader_Get_Version(uint8_t *Host_Buffer);
@@ -24,7 +17,7 @@ static void Bootloader_Get_Chip_Idendification_Number(uint8_t *Host_Buffer);
 static void Bootloader_Flash_Erase(uint8_t *Host_Buffer);
 static void Bootloader_Write_Data(uint8_t *Host_Buffer);
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
-
+static void bootloader_jump_to_user_app(void);
 
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t * pdata,uint32_t DataLen,uint32_t HosrCRC);
 static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number);
@@ -119,6 +112,11 @@ BL_Status BL_FeatchHostCommand()
 					Bootloader_Flash_Erase(BL_Host_Buffer);
 					status = BL_ACK;
 
+				case CBL_MEM_WRITE_CMD :
+					Bootloader_Write_Data(BL_Host_Buffer);
+					status = BL_NEW_APP;
+
+
 				default:
 					BL_Print_Message("Invalid command code received from host !! \r\n");
 					status = BL_NACK;
@@ -126,6 +124,9 @@ BL_Status BL_FeatchHostCommand()
 			}
 		}
 	}
+
+	//if(BL_NEW_APP == status) bootloader_jump_to_user_app();
+
 	return status;
 }
 
@@ -261,7 +262,7 @@ static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number)
 	FLASH_EraseInitTypeDef pEraseInit;
 	HAL_StatusTypeDef Hal_status = HAL_ERROR;
 	uint32_t PageError = 0;
-	uint8_t PageStatus=INVALID_PAGE_NUMBER;
+	uint8_t PageStatus = INVALID_PAGE_NUMBER;
 
 	if(page_Number>CBL_FLASH_MAX_PAGE_NUMBER)
 	{
@@ -282,7 +283,7 @@ static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number)
 			}
 			else
 			{
-				pEraseInit.TypeErase =FLASH_TYPEERASE_PAGES;
+				pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
 				pEraseInit.Banks = FLASH_BANK_1;
 				pEraseInit.PageAddress = PageAddress;
 				pEraseInit.NbPages = page_Number;
@@ -307,6 +308,161 @@ static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number)
 		}
 	}
 return PageStatus;
+}
+
+
+static void Bootloader_Write_Data(uint8_t *Host_Buffer)
+{
+	uint16_t Host_CMD_Packet_Len = 0;
+	uint32_t Host_CRC32 = 0;
+	uint32_t HOST_Address = 0;
+	uint8_t Payload_Len = 0;
+	uint8_t Address_Verification = ADDRESS_IS_INVALID;
+	uint8_t Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+
+	/* Extract the CRC32 and packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0] + 1;
+	Host_CRC32 = *((uint32_t *)((Host_Buffer + Host_CMD_Packet_Len) - CRC_TYPE_SIZE_BYTE));
+
+	/* CRC Verification */
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t *)&Host_Buffer[0] , Host_CMD_Packet_Len - 4, Host_CRC32))
+	{
+		/* Send acknowledgement to the HOST */
+		Bootloader_Send_ACK(1);
+
+		/* Extract the start address from the Host packet */
+		HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
+
+		/* Extract the payload length from the Host packet */
+		Payload_Len = Host_Buffer[6];
+
+		/* Verify the Extracted address to be valid address */
+		Address_Verification = BL_Address_Varification(HOST_Address);
+
+		if(ADDRESS_IS_VALID == Address_Verification)
+		{
+			/* Write the payload to the Flash memory */
+			Flash_Payload_Write_Status = FlashMemory_Paylaod_Write((uint8_t *)&Host_Buffer[7], HOST_Address, Payload_Len);
+
+			/* Report payload writing state */
+			Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
+		}
+		else
+		{
+			/* Report address verification failed */
+			Address_Verification = ADDRESS_IS_INVALID;
+			Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification, 1);
+		}
+	}
+	else
+	{
+		/* Send Not acknowledge to the HOST */
+		Bootloader_Send_NACK();
+	}
+}
+
+
+static uint8_t FlashMemory_Paylaod_Write(uint16_t * pdata,uint32_t StartAddress,uint8_t Payloadlen)
+{
+	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
+	uint8_t Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+	uint16_t Payload_Counter = 0;
+
+	uint32_t Address=0;
+	uint8_t UpdataAdress=0;
+
+	/* Unlock the FLASH control register access */
+	HAL_Status = HAL_FLASH_Unlock();
+
+	if(HAL_Status != HAL_OK)
+	{
+		Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+	}
+	else
+	{
+		for(Payload_Counter=0 , UpdataAdress=0 ; Payload_Counter < Payloadlen/2 ; Payload_Counter++ , UpdataAdress+=2)
+		{
+			Address = StartAddress + UpdataAdress;
+
+			/* Program a byte at a specified address */
+			HAL_Status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, Address , pdata[Payload_Counter]);
+
+			if(HAL_Status != HAL_OK)
+			{
+				Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+				break;
+			}
+			else
+			{
+				Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_PASSED;
+			}
+		}
+	}
+
+	if((FLASH_PAYLOAD_WRITE_PASSED == Flash_Payload_Write_Status) && (HAL_OK == HAL_Status))
+	{
+		/* Locks the FLASH control register access */
+		HAL_Status = HAL_FLASH_Lock();
+
+		if(HAL_Status != HAL_OK)
+		{
+			Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+		}
+		else
+		{
+			Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_PASSED;
+		}
+	}
+	else
+	{
+		Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITE_FAILED;
+	}
+	return Flash_Payload_Write_Status;
+}
+
+
+static void bootloader_jump_to_user_app(void)
+{
+	/* DeInitialize / Disable of modules */
+	__disable_irq(); 	/* Disable Maskable Interrupt */
+	HAL_RCC_DeInit(); 	/* DeInitialize the RCC clock configuration to the default reset state. */
+
+	/* Value of the main stack pointer of our main application */
+	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS);
+
+	/* Reset Handler definition function of our main application */
+	uint32_t MainAppAddr = *((volatile uint32_t *)(FLASH_SECTOR2_BASE_ADDRESS + 4));
+
+	/* Fetch the reset handler address of the user application */
+	pMainApp ResetHandler_Address = (pMainApp)MainAppAddr;
+
+	/* Set Main Stack Pointer */
+	__set_MSP(MSP_Value);
+
+	/* Jump to Application Reset Handler */
+	ResetHandler_Address();
+
+
+	/* Re-enable all interrupts */
+	__enable_irq();
+}
+
+
+static uint8_t BL_Address_Varification(uint32_t Addresss)
+{
+	uint8_t Adress_varfiy=ADDRESS_IS_INVALID;
+	if(Addresss>=FLASH_BASE &&Addresss<=STM32F103_FLASH_END)
+	{
+		Adress_varfiy=ADDRESS_IS_VALID;
+	}
+	else if(Addresss>=SRAM_BASE &&Addresss<=STM32F103_SRAM_END)
+	{
+		Adress_varfiy=ADDRESS_IS_VALID;
+	}
+	else{
+		Adress_varfiy=ADDRESS_IS_INVALID;
+	}
+	return Adress_varfiy;
 }
 
 
