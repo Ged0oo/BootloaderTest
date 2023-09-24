@@ -110,7 +110,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  status = BL_UART_Fetch_Host_Command();
+	  status = BL_FeatchHostCommand();
   }
   /* USER CODE END 3 */
 }
