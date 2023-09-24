@@ -37,8 +37,18 @@
 #define 	CBL_OTP_READ_CMD             			0x20
 #define 	CBL_CHANGE_ROP_Level_CMD     			0x21
 
-#define SEND_NACK        0xAB
-#define SEND_ACK         0xCD
+#define 	INVALID_PAGE_NUMBER          			0x00
+#define 	VALID_PAGE_NUMBER            			0x01
+#define 	UNSUCCESSFUL_ERASE           			0x02
+#define 	SUCCESSFUL_ERASE             			0x03
+
+#define 	CBL_FLASH_MAX_PAGE_NUMBER    			16
+#define 	CBL_FLASH_MASS_ERASE         			0xFF
+
+#define 	HAL_SUCCESSFUL_ERASE         			0xFFFFFFFFU
+
+#define 	SEND_NACK        						0xAB
+#define 	SEND_ACK         						0xCD
 
 
 #define 	CBL_VENDOR_ID                			76

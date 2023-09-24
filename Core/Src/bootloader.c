@@ -115,6 +115,10 @@ BL_Status BL_FeatchHostCommand()
 					Bootloader_Get_Chip_Idendification_Number(BL_Host_Buffer);
 					status = BL_ACK;
 
+				case CBL_FLASH_ERASE_CMD :
+					Bootloader_Flash_Erase(BL_Host_Buffer);
+					status = BL_ACK;
+
 				default:
 					BL_Print_Message("Invalid command code received from host !! \r\n");
 					status = BL_NACK;
@@ -229,6 +233,80 @@ static void Bootloader_Get_Help(uint8_t *Host_Buffer)
 
 		Bootloader_Send_NACK();
 	}
+}
+
+
+static void Bootloader_Flash_Erase(uint8_t *Host_Buffer)
+{
+	uint8_t Erase_status = UNSUCCESSFUL_ERASE;
+	uint16_t Host_Packet_Len=0;
+	uint32_t CRC_valu=0;
+	Host_Packet_Len =  Host_Buffer[0]+1;
+	CRC_valu = *(uint32_t*)(Host_Buffer+Host_Packet_Len -4);
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_Buffer[0],Host_Packet_Len-4,CRC_valu))
+	{
+		Erase_status = Perform_Flash_Erase(*((uint32_t*)&Host_Buffer[7]),Host_Buffer[6]);
+		Bootloader_Send_ACK(1);
+		HAL_UART_Transmit(&huart1,(uint8_t*)&Erase_status,1,HAL_MAX_DELAY);
+	}
+	else
+	{
+		Bootloader_Send_NACK();
+	}
+}
+
+
+static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number)
+{
+	FLASH_EraseInitTypeDef pEraseInit;
+	HAL_StatusTypeDef Hal_status = HAL_ERROR;
+	uint32_t PageError = 0;
+	uint8_t PageStatus=INVALID_PAGE_NUMBER;
+
+	if(page_Number>CBL_FLASH_MAX_PAGE_NUMBER)
+	{
+		PageStatus=INVALID_PAGE_NUMBER;
+	}
+	else
+	{
+		PageStatus = VALID_PAGE_NUMBER;
+
+		if( (page_Number <= (CBL_FLASH_MAX_PAGE_NUMBER - 1)) || (PageAddress == CBL_FLASH_MASS_ERASE))
+		{
+			if(PageAddress == CBL_FLASH_MASS_ERASE )
+			{
+				pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
+				pEraseInit.Banks = FLASH_BANK_1;
+				pEraseInit.PageAddress = 0x8008000;
+				pEraseInit.NbPages = 12;
+			}
+			else
+			{
+				pEraseInit.TypeErase =FLASH_TYPEERASE_PAGES;
+				pEraseInit.Banks = FLASH_BANK_1;
+				pEraseInit.PageAddress = PageAddress;
+				pEraseInit.NbPages = page_Number;
+			}
+
+			HAL_FLASH_Unlock();
+			Hal_status = HAL_FLASHEx_Erase(&pEraseInit,&PageError);
+			HAL_FLASH_Lock();
+
+			if(PageError == HAL_SUCCESSFUL_ERASE)
+			{
+				PageStatus = SUCCESSFUL_ERASE;
+			}
+			else
+			{
+				PageStatus = UNSUCCESSFUL_ERASE;
+			}
+		}
+		else
+		{
+			PageStatus = INVALID_PAGE_NUMBER;
+		}
+	}
+return PageStatus;
 }
 
 
