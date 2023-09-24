@@ -160,12 +160,12 @@ static void Bootloader_Send_ACK(uint8_t dataLen)
 	uint8_t ACK_value[2] = {0};
 	ACK_value[0] = SEND_ACK;
 	ACK_value[1] = dataLen;
-	HAL_UART_Transmit(&huart1, (uint8_t*)ACK_value,2,HAL_MAX_DELAY);
+	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, (uint8_t*)ACK_value, 2, HAL_MAX_DELAY);
 }
 
 
 static void Bootloader_Send_NACK()
 {
 	uint8_t ACk_value=SEND_NACK;
-	HAL_UART_Transmit(&huart1,&ACk_value,sizeof(ACk_value),HAL_MAX_DELAY);
+	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, &ACk_value, sizeof(ACk_value), HAL_MAX_DELAY);
 }
