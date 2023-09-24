@@ -2,14 +2,20 @@
 
 static uint8_t BL_Host_Buffer[BL_HOST_BUFFER_RX_LENGTH];
 
-uint8_t BL_Supported_CMDS[6] =
+static uint8_t Bootloader_Supported_CMDs[12] =
 {
-		CBL_GET_VER_CMD,
-		CBL_GET_HELP_CMD,
-		CBL_GET_CID_CMD,
-		CBL_GO_TO_ADDR_CMD,
-		CBL_FLASH_ERASE_CMD,
-		CBL_MEM_WRITE_CMD
+    CBL_GET_VER_CMD,
+    CBL_GET_HELP_CMD,
+    CBL_GET_CID_CMD,
+    CBL_GET_RDP_STATUS_CMD,
+    CBL_GO_TO_ADDR_CMD,
+    CBL_FLASH_ERASE_CMD,
+    CBL_MEM_WRITE_CMD,
+    CBL_ED_W_PROTECT_CMD,
+    CBL_MEM_READ_CMD,
+    CBL_READ_SECTOR_STATUS_CMD,
+    CBL_OTP_READ_CMD,
+    CBL_CHANGE_ROP_Level_CMD
 };
 
 static void Bootloader_Get_Version(uint8_t *Host_Buffer);
@@ -118,10 +124,13 @@ BL_Status BL_FeatchHostCommand()
 
 static void Bootloader_Get_Version(uint8_t *Host_buffer)
 {
-    uint8_t BL_Version[4] = { CBL_VENDOR_ID,
-	 						  CBL_SW_MAJOR_VERSION,
-	 						  CBL_SW_MINOR_VERSION,
-							  CBL_SW_PATCH_VERSION};
+    uint8_t BL_Version[4] =
+    {
+		CBL_VENDOR_ID,
+		CBL_SW_MAJOR_VERSION,
+		CBL_SW_MINOR_VERSION,
+		CBL_SW_PATCH_VERSION
+    };
 
 	/* Extract Packet length Sent by the HOST */
 	uint16_t Host_CMD_Packet_Length = Host_buffer[0]+1;
@@ -149,26 +158,33 @@ static void Bootloader_Get_Version(uint8_t *Host_buffer)
 static void Bootloader_Get_Help(uint8_t *Host_Buffer)
 {
 
-	uint8_t BL_supported_CMS[6] =
-	{
-		CBL_GET_VER_CMD,
-		CBL_GET_HELP_CMD,
-		CBL_GET_CID_CMD,
-		CBL_GO_TO_ADDR_CMD,
-		CBL_FLASH_ERASE_CMD,
-		CBL_MEM_WRITE_CMD
-	};
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Read Commands Supported by Bootloader \r\n");
+#endif
 
-	uint16_t Host_Packet_Len = Host_Buffer[0] + 1;
-	uint32_t CRC_valu = *(uint32_t*)(Host_Buffer + Host_Packet_Len -4);
+	/* Extract the CRC32 and packet length sent by the HOST */
+	uint16_t Host_CMD_Packet_Len = Host_Buffer[0] + 1;
+	uint32_t Host_CRC32 = *((uint32_t *)((Host_Buffer + Host_CMD_Packet_Len) - CRC_TYPE_SIZE_BYTE));
 
-	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_Buffer[0],Host_Packet_Len-4,CRC_valu))
+	/* CRC Verification */
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t *)&Host_Buffer[0] , Host_CMD_Packet_Len - 4, Host_CRC32))
 	{
-		Bootloader_Send_ACK(6);
-		HAL_UART_Transmit(&huart1, (uint8_t*)BL_supported_CMS, 4, HAL_MAX_DELAY);
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Passed \r\n");
+#endif
+
+		Bootloader_Send_ACK(12);
+		Bootloader_Send_Data_To_Host((uint8_t *)(&Bootloader_Supported_CMDs[0]), 12);
+
 	}
 	else
 	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Failed \r\n");
+#endif
+
 		Bootloader_Send_NACK();
 	}
 }
