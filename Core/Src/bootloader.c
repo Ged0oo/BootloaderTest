@@ -20,7 +20,7 @@ static uint8_t Bootloader_Supported_CMDs[12] =
 
 static void Bootloader_Get_Version(uint8_t *Host_Buffer);
 static void Bootloader_Get_Help(uint8_t *Host_Buffer);
-static void Bootloader_Get_Chip_Idendification_nNumber(uint8_t *Host_Buffer);
+static void Bootloader_Get_Chip_Idendification_Number(uint8_t *Host_Buffer);
 static void Bootloader_Flash_Erase(uint8_t *Host_Buffer);
 static void Bootloader_Write_Data(uint8_t *Host_Buffer);
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
@@ -111,6 +111,10 @@ BL_Status BL_FeatchHostCommand()
 					Bootloader_Get_Help(BL_Host_Buffer);
 					status = BL_ACK;
 
+				case CBL_GET_CID_CMD :
+					Bootloader_Get_Chip_Idendification_Number(BL_Host_Buffer);
+					status = BL_ACK;
+
 				default:
 					BL_Print_Message("Invalid command code received from host !! \r\n");
 					status = BL_NACK;
@@ -146,10 +150,48 @@ static void Bootloader_Get_Version(uint8_t *Host_buffer)
 	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_buffer[0] , Host_CMD_Packet_Length-4, Host_CRC32))
 	{
 		Bootloader_Send_ACK(4);
-		HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, (uint8_t*)BL_Version,4,HAL_MAX_DELAY);
+		Bootloader_Send_Data_To_Host((uint8_t *)&BL_Version, 4);
 	}
 	else
 	{
+		Bootloader_Send_NACK();
+	}
+}
+
+
+static void Bootloader_Get_Chip_Idendification_Number(uint8_t *Host_Buffer)
+{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+	BL_Print_Message("Read the MCU chip identification number \r\n");
+#endif
+
+	/* Extract the CRC32 and packet length sent by the HOST */
+	uint16_t Host_CMD_Packet_Len = Host_Buffer[0] + 1;
+	uint32_t Host_CRC32 = *((uint32_t *)((Host_Buffer + Host_CMD_Packet_Len) - CRC_TYPE_SIZE_BYTE));
+
+	/* CRC Verification */
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t *)&Host_Buffer[0] , Host_CMD_Packet_Len - 4, Host_CRC32))
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Passed \r\n");
+#endif
+
+		/* Get the MCU chip identification number */
+		uint16_t MCU_Identification_Number = (uint16_t)((DBGMCU->IDCODE) & 0x00000FFF);
+
+		/* Report chip identification number to HOST */
+		Bootloader_Send_ACK(2);
+		Bootloader_Send_Data_To_Host((uint8_t *)&MCU_Identification_Number, 2);
+	}
+	else
+	{
+
+#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("CRC Verification Failed \r\n");
+#endif
+
 		Bootloader_Send_NACK();
 	}
 }
