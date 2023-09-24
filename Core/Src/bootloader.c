@@ -2,12 +2,23 @@
 
 static uint8_t BL_Host_Buffer[BL_HOST_BUFFER_RX_LENGTH];
 
+uint8_t BL_Supported_CMDS[6] =
+{
+		CBL_GET_VER_CMD,
+		CBL_GET_HELP_CMD,
+		CBL_GET_CID_CMD,
+		CBL_GO_TO_ADDR_CMD,
+		CBL_FLASH_ERASE_CMD,
+		CBL_MEM_WRITE_CMD
+};
 
 static void Bootloader_Get_Version(uint8_t *Host_Buffer);
-static void BL_Get_Help(uint8_t *Host_buffer);
-static void BL_Get_Chip_Idendification_nNumber(uint8_t *Host_buffer);
-static void BL_Flash_Erase(uint8_t *Host_buffer);
-static void BL_Write_Data(uint8_t *Host_buffer);
+static void Bootloader_Get_Help(uint8_t *Host_Buffer);
+static void Bootloader_Get_Chip_Idendification_nNumber(uint8_t *Host_Buffer);
+static void Bootloader_Flash_Erase(uint8_t *Host_Buffer);
+static void Bootloader_Write_Data(uint8_t *Host_Buffer);
+static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
+
 
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t * pdata,uint32_t DataLen,uint32_t HosrCRC);
 static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number);
@@ -86,8 +97,12 @@ BL_Status BL_FeatchHostCommand()
 			_command = BL_Host_Buffer[1];
 			switch(_command)
 			{
-				case CBL_GET_VER_CMD:
+				case CBL_GET_VER_CMD :
 					Bootloader_Get_Version(BL_Host_Buffer);
+					status = BL_ACK;
+
+				case CBL_GET_HELP_CMD :
+					Bootloader_Get_Help(BL_Host_Buffer);
 					status = BL_ACK;
 
 				default:
@@ -123,6 +138,34 @@ static void Bootloader_Get_Version(uint8_t *Host_buffer)
 	{
 		Bootloader_Send_ACK(4);
 		HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, (uint8_t*)BL_Version,4,HAL_MAX_DELAY);
+	}
+	else
+	{
+		Bootloader_Send_NACK();
+	}
+}
+
+
+static void Bootloader_Get_Help(uint8_t *Host_Buffer)
+{
+
+	uint8_t BL_supported_CMS[6] =
+	{
+		CBL_GET_VER_CMD,
+		CBL_GET_HELP_CMD,
+		CBL_GET_CID_CMD,
+		CBL_GO_TO_ADDR_CMD,
+		CBL_FLASH_ERASE_CMD,
+		CBL_MEM_WRITE_CMD
+	};
+
+	uint16_t Host_Packet_Len = Host_Buffer[0] + 1;
+	uint32_t CRC_valu = *(uint32_t*)(Host_Buffer + Host_Packet_Len -4);
+
+	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_Buffer[0],Host_Packet_Len-4,CRC_valu))
+	{
+		Bootloader_Send_ACK(6);
+		HAL_UART_Transmit(&huart1, (uint8_t*)BL_supported_CMS, 4, HAL_MAX_DELAY);
 	}
 	else
 	{
@@ -168,4 +211,10 @@ static void Bootloader_Send_NACK()
 {
 	uint8_t ACk_value=SEND_NACK;
 	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, &ACk_value, sizeof(ACk_value), HAL_MAX_DELAY);
+}
+
+
+static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len)
+{
+	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, Host_Buffer, Data_Len, HAL_MAX_DELAY);
 }

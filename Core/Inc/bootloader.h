@@ -25,7 +25,11 @@
 #define 	BL_HOST_BUFFER_RX_LENGTH				200
 
 #define 	CBL_GET_VER_CMD              			0x10
-
+#define 	CBL_GET_HELP_CMD             			0x11
+#define 	CBL_GET_CID_CMD              			0x12
+#define 	CBL_GO_TO_ADDR_CMD           			0x14
+#define 	CBL_FLASH_ERASE_CMD          			0x15
+#define 	CBL_MEM_WRITE_CMD            			0x16
 
 #define SEND_NACK        0xAB
 #define SEND_ACK         0xCD
