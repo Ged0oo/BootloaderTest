@@ -125,7 +125,7 @@ BL_Status BL_FeatchHostCommand()
 		}
 	}
 
-	//if(BL_NEW_APP == status) bootloader_jump_to_user_app();
+	if(BL_NEW_APP == status) bootloader_jump_to_user_app();
 
 	return status;
 }
@@ -246,7 +246,7 @@ static void Bootloader_Flash_Erase(uint8_t *Host_Buffer)
 	CRC_valu = *(uint32_t*)(Host_Buffer+Host_Packet_Len -4);
 	if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_Buffer[0],Host_Packet_Len-4,CRC_valu))
 	{
-		Erase_status = Perform_Flash_Erase(*((uint32_t*)&Host_Buffer[7]),Host_Buffer[6]);
+		Erase_status = Perform_Flash_Erase(*((uint32_t*)&Host_Buffer[2]),Host_Buffer[6]);
 		Bootloader_Send_ACK(1);
 		HAL_UART_Transmit(&huart1,(uint8_t*)&Erase_status,1,HAL_MAX_DELAY);
 	}
@@ -423,10 +423,6 @@ static uint8_t FlashMemory_Paylaod_Write(uint16_t * pdata,uint32_t StartAddress,
 
 static void bootloader_jump_to_user_app(void)
 {
-	/* DeInitialize / Disable of modules */
-	__disable_irq(); 	/* Disable Maskable Interrupt */
-	HAL_RCC_DeInit(); 	/* DeInitialize the RCC clock configuration to the default reset state. */
-
 	/* Value of the main stack pointer of our main application */
 	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS);
 
@@ -439,12 +435,12 @@ static void bootloader_jump_to_user_app(void)
 	/* Set Main Stack Pointer */
 	__set_MSP(MSP_Value);
 
+	/* DeInitialize / Disable of modules */
+	HAL_RCC_DeInit(); /* DeInitialize the RCC clock configuration to the default reset state. */
+	                  /* Disable Maskable Interrupt */
+
 	/* Jump to Application Reset Handler */
 	ResetHandler_Address();
-
-
-	/* Re-enable all interrupts */
-	__enable_irq();
 }
 
 
