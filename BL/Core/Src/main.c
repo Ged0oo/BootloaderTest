@@ -99,14 +99,16 @@ int main(void)
   //uint32_t counter = 0;
   BL_Print_Message("Bootloader Started :\r\n");
 
-
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+	HAL_Delay(5000);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 

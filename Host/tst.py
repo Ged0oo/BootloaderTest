@@ -9,8 +9,9 @@ from time import sleep
 CBL_GET_VER_CMD              = 0x10
 CBL_GET_HELP_CMD             = 0x11
 CBL_GET_CID_CMD              = 0x12
-CBL_FLASH_ERASE_CMD          = 0x15
-CBL_MEM_WRITE_CMD            = 0x16
+CBL_FLASH_ERASE_CMD          = 0x13
+CBL_MEM_WRITE_CMD            = 0x14
+CBL_JMP_USER_APP_CMD         = 0x15
 
 INVALID_PAGE_NUMBER          = 0x00
 VALID_PAGE_NUMBER            = 0x01
@@ -105,6 +106,8 @@ def Read_Data_From_Serial_Port(Command_Code):
                 Process_CBL_FLASH_ERASE_CMD(Length_To_Follow)
             elif (Command_Code == CBL_MEM_WRITE_CMD):
                 Process_CBL_MEM_WRITE_CMD(Length_To_Follow)
+            elif (Command_Code == CBL_JMP_USER_APP_CMD):
+                Process_CBL_JMP_USER_APP_CMD(Length_To_Follow)
         else:
             print ("\n   Received Not-Acknowledgement from Bootloader")
             sys.exit()
@@ -156,6 +159,12 @@ def Process_CBL_MEM_WRITE_CMD(Data_Len):
     else:
         print("Timeout !!, Bootloader is not responding")
 
+def Process_CBL_JMP_USER_APP_CMD(Data_Len):
+    Serial_Data = Read_Serial_Port(Data_Len)
+    _value_ = bytearray(Serial_Data)
+    print("\n   Jumpping to user Application : ", _value_[0])
+
+        
 def Calculate_CRC32(Buffer, Buffer_Length):
     CRC_Value = 0xFFFFFFFF
     for DataElem in Buffer[0:Buffer_Length]:
@@ -202,6 +211,7 @@ def Decode_CBL_Command(Command):
         BL_Host_Buffer[3] = Word_Value_To_Byte_Value(CRC32_Value, 2, 1)
         BL_Host_Buffer[4] = Word_Value_To_Byte_Value(CRC32_Value, 3, 1)
         BL_Host_Buffer[5] = Word_Value_To_Byte_Value(CRC32_Value, 4, 1)
+        
         Write_Data_To_Serial_Port(BL_Host_Buffer[0], 1)
         for Data in BL_Host_Buffer[1 : CBL_GET_VER_CMD_Len]:
             Write_Data_To_Serial_Port(Data, CBL_GET_VER_CMD_Len - 1)
@@ -359,7 +369,28 @@ def Decode_CBL_Command(Command):
         ''' Memory write is inactive '''
         Memory_Write_Is_Active = 0
         if(Memory_Write_All == 1):
-            print("\n\n Payload Written Successfully")    
+            print("\n\n Payload Written Successfully") 
+                    
+    elif(Command == 6):
+        print("\n Jumping to User Application ..\n")
+        CBL_JMP_USER_APP_LEN = 6
+        BL_Host_Buffer[0] = CBL_JMP_USER_APP_LEN - 1
+        BL_Host_Buffer[1] = CBL_JMP_USER_APP_CMD
+        
+        CRC32_Value = Calculate_CRC32(BL_Host_Buffer, CBL_JMP_USER_APP_LEN - 4)
+        CRC32_Value = CRC32_Value & 0xFFFFFFFF
+        
+        print("Host CRC = ", hex(CRC32_Value))
+        
+        BL_Host_Buffer[2] = Word_Value_To_Byte_Value(CRC32_Value, 1, 1)
+        BL_Host_Buffer[3] = Word_Value_To_Byte_Value(CRC32_Value, 2, 1)
+        BL_Host_Buffer[4] = Word_Value_To_Byte_Value(CRC32_Value, 3, 1)
+        BL_Host_Buffer[5] = Word_Value_To_Byte_Value(CRC32_Value, 4, 1)
+        
+        Write_Data_To_Serial_Port(BL_Host_Buffer[0], 1)
+        for Data in BL_Host_Buffer[1 : CBL_JMP_USER_APP_LEN]:
+            Write_Data_To_Serial_Port(Data, CBL_JMP_USER_APP_LEN - 1)
+        Read_Data_From_Serial_Port(CBL_JMP_USER_APP_CMD)
 
 SerialPortName = input("Enter the Port Name of your device(Ex: COM3):")
 Serial_Port_Configuration(SerialPortName)
@@ -373,6 +404,7 @@ while True:
     print("   CBL_GET_CID_CMD              --> 3")
     print("   CBL_FLASH_ERASE_CMD          --> 4")
     print("   CBL_MEM_WRITE_CMD            --> 5")
+    print("   CBL_JMP_USER_APP_CMD         --> 6")
     
     CBL_Command = input("\nEnter the command code : ")
     

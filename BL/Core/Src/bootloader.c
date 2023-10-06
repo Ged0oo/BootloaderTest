@@ -17,7 +17,7 @@ static void Bootloader_Get_Chip_Idendification_Number(uint8_t *Host_Buffer);
 static void Bootloader_Flash_Erase(uint8_t *Host_Buffer);
 static void Bootloader_Write_Data(uint8_t *Host_Buffer);
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer, uint32_t Data_Len);
-static void bootloader_jump_to_user_app(void);
+static void bootloader_jump_to_user_app(uint8_t *Host_Buffer);
 
 static tCRC_VERIFY Bootloader_CRC_Verify(uint8_t * pdata,uint32_t DataLen,uint32_t HosrCRC);
 static uint8_t Perform_Flash_Erase(uint32_t PageAddress, uint8_t page_Number);
@@ -99,23 +99,32 @@ BL_Status BL_FeatchHostCommand()
 				case CBL_GET_VER_CMD :
 					Bootloader_Get_Version(BL_Host_Buffer);
 					status = BL_ACK;
+					break;
 
 				case CBL_GET_HELP_CMD :
 					Bootloader_Get_Help(BL_Host_Buffer);
 					status = BL_ACK;
+					break;
 
 				case CBL_GET_CID_CMD :
 					Bootloader_Get_Chip_Idendification_Number(BL_Host_Buffer);
 					status = BL_ACK;
+					break;
 
 				case CBL_FLASH_ERASE_CMD :
 					Bootloader_Flash_Erase(BL_Host_Buffer);
 					status = BL_ACK;
+					break;
 
 				case CBL_MEM_WRITE_CMD :
 					Bootloader_Write_Data(BL_Host_Buffer);
-					status = BL_NEW_APP;
+					status = BL_ACK;
+					break;
 
+				case CBL_JMP_USER_APP_CMD :
+					bootloader_jump_to_user_app(BL_Host_Buffer);
+					status = BL_ACK;
+					break;
 
 				default:
 					BL_Print_Message("Invalid command code received from host !! \r\n");
@@ -124,9 +133,6 @@ BL_Status BL_FeatchHostCommand()
 			}
 		}
 	}
-
-	if(BL_NEW_APP == status) bootloader_jump_to_user_app();
-
 	return status;
 }
 
@@ -421,26 +427,49 @@ static uint8_t FlashMemory_Paylaod_Write(uint16_t * pdata,uint32_t StartAddress,
 }
 
 
-static void bootloader_jump_to_user_app(void)
+static void bootloader_jump_to_user_app(uint8_t *Host_buffer)
 {
-	/* Value of the main stack pointer of our main application */
-	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS);
+		/* Extract Packet length Sent by the HOST */
+		uint16_t Host_CMD_Packet_Length = Host_buffer[0]+1;
 
-	/* Reset Handler definition function of our main application */
-	uint32_t MainAppAddr = *((volatile uint32_t *)(FLASH_SECTOR2_BASE_ADDRESS + 4));
+	#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
+		BL_Print_Message("Packet Length : %d\r", Host_CMD_Packet_Length);
+	#endif
 
-	/* Fetch the reset handler address of the user application */
-	pMainApp ResetHandler_Address = (pMainApp)MainAppAddr;
+		/* Extract CRC32 Sent by the HOST */
+		uint32_t Host_CRC32 = *(uint32_t *)(Host_buffer + Host_CMD_Packet_Length - CRC_TYPE_SIZE_BYTE);
 
-	/* Set Main Stack Pointer */
-	__set_MSP(MSP_Value);
 
-	/* DeInitialize / Disable of modules */
-	HAL_RCC_DeInit(); /* DeInitialize the RCC clock configuration to the default reset state. */
-	                  /* Disable Maskable Interrupt */
+		if(CRC_PASS == Bootloader_CRC_Verify((uint8_t*)&Host_buffer[0] , Host_CMD_Packet_Length-4, Host_CRC32))
+		{
+			Bootloader_Send_ACK(1);
+			Bootloader_Send_Data_To_Host(FLASH_SECTOR2_BASE_ADDRESS, 4);
 
-	/* Jump to Application Reset Handler */
-	ResetHandler_Address();
+			//just a function pointer to hold the address of the reset handler of the user app.
+			void (*app_reset_handler)(void);
+
+			//disbale interuppts
+		    __set_PRIMASK(1);
+		    __disable_irq();
+
+		    SCB->VTOR = FLASH_SECTOR2_BASE_ADDRESS;
+
+		    // 1. configure the MSP by reading the value from the base address of the sector 2
+		    uint32_t msp_value = *(__IO uint32_t *)FLASH_SECTOR2_BASE_ADDRESS;
+
+		    __set_MSP(msp_value);
+
+		    uint32_t resethandler_address = *(__IO uint32_t *) (FLASH_SECTOR2_BASE_ADDRESS + 4);
+
+		    app_reset_handler = (void*) resethandler_address;
+
+		    //3. jump to reset handler of the user application
+		    app_reset_handler();
+		}
+		else
+		{
+			Bootloader_Send_NACK();
+		}
 }
 
 

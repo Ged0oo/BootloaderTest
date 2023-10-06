@@ -27,8 +27,10 @@
 #define 	CBL_GET_VER_CMD              			0x10
 #define 	CBL_GET_HELP_CMD             			0x11
 #define 	CBL_GET_CID_CMD              			0x12
-#define 	CBL_FLASH_ERASE_CMD          			0x15
-#define 	CBL_MEM_WRITE_CMD            			0x16
+#define 	CBL_FLASH_ERASE_CMD          			0x13
+#define 	CBL_MEM_WRITE_CMD            			0x14
+#define 	CBL_JMP_USER_APP_CMD            		0x15
+
 
 #define 	INVALID_PAGE_NUMBER          			0x00
 #define 	VALID_PAGE_NUMBER            			0x01
@@ -86,6 +88,6 @@ void BL_Print_Message(char *format,...);
 
 typedef void (*pMainApp)(void);
 typedef void (*Jump_Ptr)(void);
-
+typedef void (*FunctionPointer)(void);
 
 #endif //__BOOTLOADER_H__
